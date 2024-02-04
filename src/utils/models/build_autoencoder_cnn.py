@@ -38,6 +38,7 @@ class AutoEncoder:
 
 #         self.classifier = tf.keras.Model(inputs = [input_img], outputs = [classifier])
     def build_autoencoder(self, input_shape, input_img, numFilters, droupouts, doBatchNorm):
+        # Encoder Part
         c1 = self.Conv2dBlock(input_img, numFilters * 1, kernelSize = 3, doBatchNorm = doBatchNorm, name='encoder_conv2d_1')
         p1 = tf.keras.layers.MaxPooling2D((2,2))(c1)
         p1 = tf.keras.layers.Dropout(droupouts)(p1)
@@ -53,7 +54,7 @@ class AutoEncoder:
         c4 = self.Conv2dBlock(p3, numFilters * 8, kernelSize = 3, doBatchNorm = doBatchNorm, name='encoder_conv2d_4')
         p4 = tf.keras.layers.MaxPooling2D((2,2))(c4)
         p4 = tf.keras.layers.Dropout(droupouts)(p4)
-
+        # Latent Space
         c5 = self.Conv2dBlock(p4, numFilters * 16, kernelSize = 3, doBatchNorm = doBatchNorm, name='encoder_conv2d_5')
         
 #       
@@ -63,8 +64,6 @@ class AutoEncoder:
         c6 = self.Conv2dBlock(u6, numFilters * 8, kernelSize = 3, doBatchNorm = doBatchNorm, name='decoder_conv2d_1')
 
         u7 = tf.keras.layers.Conv2DTranspose(numFilters*4, (3, 3), strides = (2, 2), padding = 'same')(c6)
-
-        u7 = tf.keras.layers.concatenate([u7, c3])
         c7 = self.Conv2dBlock(u7, numFilters * 4, kernelSize = 3, doBatchNorm = doBatchNorm, name='decoder_conv2d_2')
 
         u8 = tf.keras.layers.Conv2DTranspose(numFilters*2, (3, 3), strides = (2, 2), padding = 'same')(c7)

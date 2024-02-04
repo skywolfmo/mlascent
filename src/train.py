@@ -10,30 +10,22 @@ This Python script (train.py) is designed for pre-training an autoencoder  model
 """
 
 import argparse
-from utils.evaluate_test_data import evaluate_test_data
-from utils.load_test_set import load_test_data
 from utils.setup_gpus import setup_gpus
-from utils.load_data_multimodal import load_data
-from utils.build_fusion_model import build_model
-from tensorflow.keras.optimizers import Adam
 from utils.set_seed import set_seed
-import logging
+from utils.load_data import load_data
+from utils.models.build_autoencoder_cnn import AutoEncoder
 import os
 import tensorflow as tf
 import numpy as np
 import wandb
 from wandb.keras import WandbCallback
-import matplotlib.pyplot as plt
-import seaborn as sns
-from tensorflow.keras import mixed_precision
 
 
 # Define the training step function
 @tf.function
-def train_step(inputs, labels, model, im_loss_fn, optimizer):
+def train_step(inputs, model, im_loss_fn, optimizer, train_loss):
     with tf.GradientTape() as tape:
         # Forward pass
-#         self.classifier_layer, self.segmenter_layer, self.image_reconstructor_layer, c5
         rec_im = model(inputs)
         im_loss_value = im_loss_fn(inputs, rec_im)
         loss_value = (im_loss_value + 1) /2
@@ -43,24 +35,11 @@ def train_step(inputs, labels, model, im_loss_fn, optimizer):
     trainable_vars = [var for var in model.trainable_variables if any(layer in var.name for layer in trainable_layers)]
 
     # Compute gradients
-    gradients = tape.gradient(loss_value, model.trainable_variables)
+    gradients = tape.gradient(loss_value, trainable_vars)
     # Update weights
-    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    optimizer.apply_gradients(zip(gradients, trainable_vars))
     # Update training metrics
     train_loss(loss_value)
-    im_train_loss(im_loss_value)
-
-# Define the test step function
-@tf.function
-def test_step(inputs, labels, model):
-    # Forward pass
-    _ , _ ,rec_im, _ = model(inputs)
-    im_loss_value = im_loss_fn(inputs, rec_im)
-    # Update test metrics
-    loss_value =  (im_loss_value+1)/2
-    test_loss(loss_value)
-
-    im_test_loss(im_loss_value)
 
 
 
@@ -69,18 +48,6 @@ def train(config):
 
     model_name = 'AutoEncoder'
 
-
-
-    try:
-        gpus = tf.config.list_physical_devices('GPU')
-        if len(gpus) > 1:
-            strategy = tf.distribute.MirroredStrategy()
-        else:
-            strategy = tf.distribute.get_strategy()
-        print("Number of accelerators: ", strategy.num_replicas_in_sync)
-    except ValueError as e:
-        print(f"Error setting up GPU strategy: {e}")
-        strategy = tf.distribute.get_strategy()
 
     wandb.login()
 
